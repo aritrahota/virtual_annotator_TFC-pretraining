@@ -6,3 +6,5 @@ old_README.md
 *.log
 #*.pt
 *.zip
+.ipynb_checkpoints
+/**/*.ipynb
