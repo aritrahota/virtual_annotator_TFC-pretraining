@@ -1,5 +1,6 @@
 import os
 import sys
+import pickle
 sys.path.append("..")
 
 from loss import *
@@ -46,9 +47,9 @@ def Trainer(model,  model_optimizer, classifier, classifier_optimizer, train_dl,
         for epoch in range(1, config.num_epoch + 1):
             logger.debug(f'\nEpoch : {epoch}')
 
-            valid_loss, emb_finetune, label_finetune, F1 = model_finetune(model, model_optimizer, valid_dl, config,
-                                  device, training_mode, classifier=classifier, classifier_optimizer=classifier_optimizer)
-            scheduler.step(valid_loss)
+            # valid_loss, emb_finetune, label_finetune, F1 = model_finetune(model, model_optimizer, valid_dl, config,
+            #                       device, training_mode, classifier=classifier, classifier_optimizer=classifier_optimizer)
+            # scheduler.step(valid_loss)
 
 
             # save best fine-tuning model""
@@ -104,9 +105,20 @@ def Trainer(model,  model_optimizer, classifier, classifier_optimizer, train_dl,
     logger.debug("\n################## Training is Done! #########################")
 
 def model_pretrain(model, model_optimizer, criterion, train_loader, config, device, training_mode,):
+    
+    
     total_loss = []
     model.train()
     global loss, loss_t, loss_f, l_TF, loss_c, data_test, data_f_test
+
+
+    accumulated_data = {                #edit from
+        'h_t' : [],
+        'h_f' : [],
+        'z_t' : [],
+        'z_f' : [],
+        'labels' : []                   #edit to
+    }
 
     # optimizer
     model_optimizer.zero_grad()
@@ -119,6 +131,15 @@ def model_pretrain(model, model_optimizer, criterion, train_loader, config, devi
         """Produce embeddings"""
         h_t, z_t, h_f, z_f = model(data, data_f)
         h_t_aug, z_t_aug, h_f_aug, z_f_aug = model(aug1, aug1_f)
+
+
+        #edit from
+        accumulated_data['h_t'].append(h_t.cpu().detach().numpy())
+        accumulated_data['h_f'].append(h_f.cpu().detach().numpy())
+        accumulated_data['z_t'].append(z_t.cpu().detach().numpy())
+        accumulated_data['z_f'].append(z_f.cpu().detach().numpy())
+        accumulated_data['labels'].append(labels.cpu().detach().numpy())
+        #edit to
 
         """Compute Pre-train loss"""
         """NTXentLoss: normalized temperature-scaled cross entropy loss. From SimCLR"""
@@ -142,6 +163,17 @@ def model_pretrain(model, model_optimizer, criterion, train_loader, config, devi
     print('Pretraining: overall loss:{}, l_t: {}, l_f:{}, l_c:{}'.format(loss, loss_t, loss_f, l_TF))
 
     ave_loss = torch.tensor(total_loss).mean()
+
+    #edit from
+    for key in accumulated_data:
+            accumulated_data[key] = np.concatenate(accumulated_data[key], axis=0)
+
+    pickle_file_path = f'./motionsense_accumulated_embeddings_labels.pkl'
+    with open(pickle_file_path, 'wb') as pkl_file:
+        pickle.dump(accumulated_data, pkl_file)
+        
+    print(f"All embeddings and lables are saved to {pickle_file_path}")
+    #edit to  
 
     return ave_loss
 
