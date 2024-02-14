@@ -168,7 +168,7 @@ def model_pretrain(model, model_optimizer, criterion, train_loader, config, devi
     for key in accumulated_data:
             accumulated_data[key] = np.concatenate(accumulated_data[key], axis=0)
 
-    pickle_file_path = f'./hhar_accumulated_embeddings_labels.pkl'
+    pickle_file_path = f'./pamap2_accumulated_embeddings_labels.pkl'
     with open(pickle_file_path, 'wb') as pkl_file:
         pickle.dump(accumulated_data, pkl_file)
         
